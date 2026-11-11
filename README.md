@@ -12,6 +12,10 @@
 | --- | --- |
 | ![뒤 차량에서 메시지가 도착했다는 알림과 수락 및 거절 버튼](docs/screenshots/incoming-message.png) | ![보낸 차량의 방향과 신호 변경 문구가 표시된 화면](docs/screenshots/accepted-message.png) |
 
+## APK 다운로드
+
+Pleos 에뮬레이터에서 시연할 수 있는 [차담 디버그 APK](apk/chadam-debug.apk)입니다.
+
 ## 실행 방법
 
 1. Android Studio에서 이 저장소의 루트 폴더를 엽니다.
