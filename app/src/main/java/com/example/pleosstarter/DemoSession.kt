@@ -79,18 +79,6 @@ class DemoSession(private val now: () -> Long) {
         notice = "${checkNotNull(senderDirection).label} 차량에서 메시지가 왔습니다."
     }
 
-    fun replaceFront() {
-        if (stage == Stage.INBOX || stage == Stage.READ) return
-        val front = cars.first { it.direction == Direction.FRONT }
-        cars = cars.map { if (it == front) it.copy(id = if (it.id == "B") "F" else "B") else it }
-        if (selected?.id == front.id) {
-            start()
-            notice = "선택했던 차량이 범위를 벗어났습니다. 다시 선택하세요."
-        } else {
-            notice = "앞 차량이 교체되었습니다."
-        }
-    }
-
     fun expire() {
         if (stage == Stage.INBOX && now() >= deadline) reset("수락 시간이 지나 메시지가 만료되었습니다.")
     }

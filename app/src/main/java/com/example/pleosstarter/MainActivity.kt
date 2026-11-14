@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -188,14 +190,14 @@ class MainActivity : Activity(), RecognitionListener {
         if (session.stage != previous && session.stage in listOf(Stage.CONFIRM, Stage.INBOX, Stage.READ)) {
             speak(session.notice)
         }
-        render()
+        render(animateInbox = previous != Stage.INBOX && session.stage == Stage.INBOX)
         scheduleListen()
     }
 
-    private fun render() {
-        val background = Color.rgb(12, 20, 29)
-        val surface = Color.rgb(30, 47, 62)
-        val accent = Color.rgb(111, 224, 193)
+    private fun render(animateInbox: Boolean = false) {
+        val background = Color.rgb(9, 16, 25)
+        val surface = Color.rgb(24, 39, 54)
+        val accent = Color.rgb(115, 234, 201)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(26), dp(18), dp(26), dp(20))
@@ -210,58 +212,121 @@ class MainActivity : Activity(), RecognitionListener {
                 if (size >= 26) setTypeface(null, Typeface.BOLD)
             })
         }
-        fun row() = LinearLayout(this).apply { gravity = Gravity.CENTER }.also { root.addView(it) }
+        fun row(parent: LinearLayout = root) = LinearLayout(this).apply { gravity = Gravity.CENTER }.also { parent.addView(it) }
         fun rounded(color: Int, border: Int = color) = GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(14).toFloat()
             setStroke(dp(1), border)
         }
-        fun button(parent: LinearLayout, title: String, enabled: Boolean = true, highlighted: Boolean = false, carMarker: Boolean = false, action: () -> Unit) {
-            val horizontal = parent !== root
+        fun button(parent: LinearLayout, title: String, enabled: Boolean = true, highlighted: Boolean = false, carMarker: Boolean = false, icon: String? = null, action: () -> Unit) {
+            val horizontal = parent.orientation == LinearLayout.HORIZONTAL
             val params = LinearLayout.LayoutParams(
                 if (horizontal) 0 else LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT, if (horizontal) 1f else 0f
             ).apply { setMargins(0, dp(3), dp(6), dp(3)) }
             parent.addView(Button(this).apply {
                 text = title
-                textSize = 17f
-                minHeight = dp(56)
+                textSize = if (carMarker) 27f else 25f
+                minHeight = dp(70)
                 isAllCaps = false
                 isEnabled = enabled
                 alpha = if (enabled || highlighted) 1f else 0.65f
-                this.background = rounded(
+                val shape = rounded(
                     if (highlighted) accent else surface,
                     if (highlighted) accent else Color.rgb(60, 81, 98)
                 )
+                this.background = RippleDrawable(ColorStateList.valueOf(0x26FFFFFF), shape, null)
                 if (carMarker) {
                     val marker = CarMarker(if (highlighted) Color.WHITE else Color.rgb(171, 202, 224))
-                    marker.setBounds(0, 0, dp(62), dp(82))
+                    marker.setBounds(0, 0, dp(78), dp(104))
                     setCompoundDrawables(null, marker, null, null)
                     compoundDrawablePadding = dp(4)
                     setPadding(dp(4), dp(8), dp(4), dp(8))
+                }
+                icon?.let {
+                    val glyph = ActionIcon(it, if (highlighted) background else accent)
+                    glyph.setBounds(0, 0, dp(24), dp(24))
+                    setCompoundDrawablesRelative(glyph, null, null, null)
+                    compoundDrawablePadding = dp(12)
+                    setPadding(dp(18), dp(12), dp(18), dp(12))
+                    gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 }
                 setTextColor(if (highlighted) background else Color.WHITE)
                 setOnClickListener { act(action) }
             }, params)
         }
         val stage = session.stage
-        val recipient = stage == Stage.INBOX || stage == Stage.READ
-        label(getString(R.string.app_name), 30f)
-        label(if (recipient) "시뮬레이션 · 수신 차량 ${session.selected?.id}" else "시뮬레이션 · 송신 차량 A", 16f, accent)
-        if (recipient) {
-            session.senderDirection?.let { label("보낸 차량 · ${it.label} 차량", 19f, accent) }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
         }
-        label(session.notice, if (stage == Stage.READ) 28f else 20f)
-
+        fun attachContent() {
+            root.addView(content, LinearLayout.LayoutParams(-1, -2, 1f).apply {
+                setMargins(0, dp(12), 0, dp(16))
+            })
+        }
+        val recipient = stage == Stage.INBOX || stage == Stage.READ
+        label(getString(R.string.app_name), 45f)
+        label(if (recipient) "시뮬레이션 · 수신 차량 ${session.selected?.id}" else "시뮬레이션 · 송신 차량 A", 22f, accent)
         if (recipient) {
+            attachContent()
+            content.background = rounded(surface, if (stage == Stage.INBOX) accent else Color.rgb(60, 81, 98))
+            if (stage == Stage.INBOX) {
+                content.addView(TextView(this).apply {
+                    text = "새 메시지"
+                    textSize = 24f
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(accent)
+                    gravity = Gravity.CENTER
+                    val bell = ActionIcon("bell", accent)
+                    bell.setBounds(0, 0, dp(24), dp(24))
+                    setCompoundDrawablesRelative(bell, null, null, null)
+                    compoundDrawablePadding = dp(10)
+                    setPadding(0, 0, 0, dp(20))
+                })
+            }
+            content.setPadding(dp(28), dp(24), dp(28), dp(28))
+            session.senderDirection?.let { direction ->
+                content.addView(TextView(this).apply {
+                    text = "보낸 차량 · ${direction.label} 차량"
+                    val marker = CarMarker(accent)
+                    marker.setBounds(0, 0, dp(72), dp(96))
+                    setCompoundDrawables(null, marker, null, null)
+                    compoundDrawablePadding = dp(12)
+                    gravity = Gravity.CENTER
+                    textSize = 29f
+                    setTextColor(accent)
+                })
+            }
+            content.addView(TextView(this).apply {
+                text = session.notice
+                textSize = 43f
+                gravity = Gravity.CENTER
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                setPadding(0, dp(16), 0, dp(8))
+            })
             if (stage == Stage.INBOX) {
                 val controls = row()
-                button(controls, "수락", highlighted = true) { session.accept() }
-                button(controls, "거절") { session.decline() }
+                button(controls, "수락", highlighted = true, icon = "check") { session.accept() }
+                button(controls, "거절", icon = "close") { session.decline() }
             } else {
-                button(root, "송신 화면으로 돌아가기") { session.reset() }
+                button(root, "송신 화면으로 돌아가기", highlighted = true) { session.reset() }
             }
         } else {
+            label(session.notice, 30f)
+            attachContent()
+            val map = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                this.background = RoadSurface()
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+            }
+            val wide = resources.configuration.screenWidthDp >= 760
+            val selectingPreset = stage == Stage.PRESET
+            val body = if (wide && selectingPreset) row(content) else content
+            body.addView(map, if (body === content) LinearLayout.LayoutParams(-1, -2, 1f)
+                else LinearLayout.LayoutParams(0, -2, 1.15f))
             val selectable = stage != Stage.IDLE
             fun car(parent: LinearLayout, direction: Direction) {
                 val nearby = session.cars.firstOrNull { it.direction == direction }
@@ -273,14 +338,18 @@ class MainActivity : Activity(), RecognitionListener {
             fun spacer(parent: LinearLayout) {
                 parent.addView(android.view.View(this), LinearLayout.LayoutParams(0, 1, 1f))
             }
+            fun mapLane() = LinearLayout(this).apply {
+                gravity = Gravity.CENTER
+                map.addView(this, LinearLayout.LayoutParams(-1, -2, 1f))
+            }
             fun centerCar(direction: Direction) {
-                val lane = row()
+                val lane = mapLane()
                 spacer(lane)
                 car(lane, direction)
                 spacer(lane)
             }
             centerCar(Direction.FRONT)
-            val sides = row()
+            val sides = mapLane()
             car(sides, Direction.LEFT)
             sides.addView(TextView(this).apply {
                 text = "내 차 A"
@@ -290,38 +359,50 @@ class MainActivity : Activity(), RecognitionListener {
                 compoundDrawablePadding = dp(4)
                 gravity = Gravity.CENTER
                 setTextColor(accent)
-                textSize = 18f
+                textSize = 26f
             }, LinearLayout.LayoutParams(0, dp(116), 1f))
             car(sides, Direction.RIGHT)
             centerCar(Direction.REAR)
 
             when (stage) {
-                Stage.IDLE -> button(root, "메시지 보내기", highlighted = true) { session.start() }
-                Stage.PRESET -> Preset.entries.chunked(2).forEach { presets ->
-                    val messages = row()
-                    presets.forEach { preset -> button(messages, preset.label) { session.pick(preset) } }
+                Stage.IDLE -> button(root, "메시지 보내기", highlighted = true, icon = "send") { session.start() }
+                Stage.PRESET -> {
+                    val presetsPanel = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(if (wide) dp(16) else 0, dp(8), 0, 0)
+                    }
+                    body.addView(presetsPanel, if (wide) LinearLayout.LayoutParams(0, -2, 1f)
+                        else LinearLayout.LayoutParams(-1, -2))
+                    Preset.entries.chunked(if (wide) 1 else 2).forEach { presets ->
+                        val messages = row(presetsPanel)
+                        presets.forEach { preset -> button(messages, preset.label) { session.pick(preset) } }
+                    }
                 }
-                Stage.CONFIRM -> button(root, "보내기", highlighted = true) { session.send() }
+                Stage.CONFIRM -> button(root, "보내기", highlighted = true, icon = "send") { session.send() }
                 else -> Unit
             }
-            val controls = row()
-            button(controls, "테스트 · 앞차 교체") { session.replaceFront() }
-            if (selectable) button(controls, "취소") { session.reset() }
+            if (selectable) button(root, "취소", icon = "close") { session.reset() }
         }
 
-        button(root, if (voiceEnabled) "음성 시연 끄기" else "음성 시연 켜기") { toggleVoice() }
-        if (voiceNotice.isNotEmpty()) label(voiceNotice, 15f, accent)
+        button(root, if (voiceEnabled) "음성 시연 끄기" else "음성 시연 켜기", icon = "mic") { toggleVoice() }
+        if (voiceNotice.isNotEmpty()) label(voiceNotice, 19f, accent)
         setContentView(ScrollView(this).apply {
             fitsSystemWindows = true
             isFillViewport = true
             setBackgroundColor(background)
             addView(root)
         })
+        if (animateInbox && android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            content.alpha = 0f
+            content.translationY = dp(24).toFloat()
+            content.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(240)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+        }
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }
-
-
-
-
