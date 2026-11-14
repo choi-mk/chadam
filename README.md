@@ -6,7 +6,7 @@
 
 | 주변 차량 선택 | 대상과 문구 확인 |
 | --- | --- |
-| ![내 차를 중심으로 표시된 네 대 중 앞 차량을 선택한 화면](docs/screenshots/vehicle-picker.png) | ![앞 차량에 신호 변경 안내를 보내기 전 확인하는 화면](docs/screenshots/send-confirmation.png) |
+| ![내 차를 중심으로 표시된 네 대 중 보낼 차량을 고르는 화면](docs/screenshots/vehicle-picker.png) | ![앞 차량에 신호 변경 안내를 보내기 전 확인하는 화면](docs/screenshots/send-confirmation.png) |
 
 | 수신 알림 | 수락 후 메시지 |
 | --- | --- |
